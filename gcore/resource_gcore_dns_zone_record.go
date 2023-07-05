@@ -39,7 +39,21 @@ const (
 	DNSZoneRecordSchemaMetaContinents = "continents"
 	DNSZoneRecordSchemaMetaLatLong    = "latlong"
 	DNSZoneRecordSchemaMetaNotes      = "notes"
+	DNSZoneRecordSchemaMetaFailover   = "failover"
+	DNSZoneRecordSchemaMetaIsHealthy  = "is_healthy"
 	DNSZoneRecordSchemaMetaDefault    = "default"
+
+	DNSZoneRecordSchemaMetaFailoverFrequency      = "frequency"
+	DNSZoneRecordSchemaMetaFailoverHost           = "host"
+	DNSZoneRecordSchemaMetaFailoverHTTPStatusCode = "http_status_code"
+	DNSZoneRecordSchemaMetaFailoverCommand        = "command"
+	DNSZoneRecordSchemaMetaFailoverMethod         = "method"
+	DNSZoneRecordSchemaMetaFailoverPort           = "port"
+	DNSZoneRecordSchemaMetaFailoverProtocol       = "protocol"
+	DNSZoneRecordSchemaMetaFailoverRegexp         = "regexp"
+	DNSZoneRecordSchemaMetaFailoverTimeout        = "timeout"
+	DNSZoneRecordSchemaMetaFailoverTLS            = "tls"
+	DNSZoneRecordSchemaMetaFailoverURL            = "url"
 )
 
 func resourceDNSZoneRecord() *schema.Resource {
@@ -167,7 +181,7 @@ func resourceDNSZoneRecord() *schema.Resource {
 											},
 										},
 										Optional:    true,
-										Description: "An asn meta (e.g. 12345) of DNS Zone Record resource.",
+										Description: "An asn meta (eg. 12345) of DNS Zone Record resource.",
 									},
 									DNSZoneRecordSchemaMetaIP: {
 										Type: schema.TypeList,
@@ -183,7 +197,7 @@ func resourceDNSZoneRecord() *schema.Resource {
 											},
 										},
 										Optional:    true,
-										Description: "An ip meta (e.g. 127.0.0.0) of DNS Zone Record resource.",
+										Description: "An ip meta (eg. 127.0.0.0) of DNS Zone Record resource.",
 									},
 									DNSZoneRecordSchemaMetaLatLong: {
 										Optional: true,
@@ -193,7 +207,7 @@ func resourceDNSZoneRecord() *schema.Resource {
 										Elem: &schema.Schema{
 											Type: schema.TypeFloat,
 										},
-										Description: "A latlong meta (e.g. 27.988056, 86.925278) of DNS Zone Record resource.",
+										Description: "A latlong meta (eg. 27.988056, 86.925278) of DNS Zone Record resource.",
 									},
 									DNSZoneRecordSchemaMetaNotes: {
 										Type: schema.TypeList,
@@ -201,7 +215,7 @@ func resourceDNSZoneRecord() *schema.Resource {
 											Type: schema.TypeString,
 										},
 										Optional:    true,
-										Description: "A notes meta (e.g. Miami DC) of DNS Zone Record resource.",
+										Description: "A notes meta (eg. Miami DC) of DNS Zone Record resource.",
 									},
 									DNSZoneRecordSchemaMetaContinents: {
 										Type: schema.TypeList,
@@ -209,7 +223,7 @@ func resourceDNSZoneRecord() *schema.Resource {
 											Type: schema.TypeString,
 										},
 										Optional:    true,
-										Description: "Continents meta (e.g. Asia) of DNS Zone Record resource.",
+										Description: "Continents meta (eg. Asia) of DNS Zone Record resource.",
 									},
 									DNSZoneRecordSchemaMetaCountries: {
 										Type: schema.TypeList,
@@ -217,8 +231,115 @@ func resourceDNSZoneRecord() *schema.Resource {
 											Type: schema.TypeString,
 										},
 										Optional:    true,
-										Description: "Countries meta (e.g. USA) of DNS Zone Record resource.",
+										Description: "Countries meta (eg. USA) of DNS Zone Record resource.",
 									},
+									DNSZoneRecordSchemaMetaIsHealthy: {
+										Type:         schema.TypeBool,
+										Optional:     true,
+										RequiredWith: []string{DNSZoneRecordSchemaMetaFailover},
+										Description:  "IsHealthy meta (eg. true) of DNS Zone Record resource.",
+									},
+									DNSZoneRecordSchemaMetaFailover: {
+										Type: schema.TypeSet,
+										Elem: &schema.Resource{
+											Schema: map[string]*schema.Schema{
+												//"frequency": 60,
+												//"host": "www.gcore.com",
+												//"http_status_code": null,
+												//"method": "GET",
+												//"port": 80,
+												//"protocol": "HTTP",
+												//"regexp": "",
+												//"timeout": 10,
+												//"tls": false,
+												//"url": "/"
+												// from: func (failoverMeta *FailoverMeta) Validation() error {
+												DNSZoneRecordSchemaMetaFailoverFrequency: {
+													Type:        schema.TypeInt,
+													Description: "Frequency in seconds (10-3600).",
+													Required:    true,
+													ValidateDiagFunc: func(i interface{}, path cty.Path) diag.Diagnostics {
+														v, dtv := toInt(i)
+														if dtv != dtvInt {
+															return diag.Errorf("dns record meta failover frequency %v must be integer, got: %v", path, i)
+														}
+														if v < 10 || v > 3600 {
+															return diag.Errorf("dns record meta failover frequency %v must be in range 10-3600, got: %v", path, i)
+														}
+													},
+												},
+												DNSZoneRecordSchemaMetaFailoverHost: {
+													Type:        schema.TypeString,
+													Description: "Request host/virtualhost to send if protocol=HTTP, must be empty for non-HTTP",
+												},
+												DNSZoneRecordSchemaMetaFailoverCommand: {
+													Type:        schema.TypeString,
+													Description: "Command to send if protocol=TCP/UDP, maximum length: 255.",
+													ValidateDiagFunc: func(i interface{}, path cty.Path) diag.Diagnostics {
+														v, dtv := toString(i)
+														if len(v) > 255 {
+															return diag.Errorf("dns record meta failover command %v must be less then 255, got: %v", path, i)
+														}
+													},
+												},
+												DNSZoneRecordSchemaMetaFailoverHTTPStatusCode: {
+													Type:        schema.TypeInt,
+													Description: "Expected status code if protocol=HTTP, must be empty for non-HTTP.",
+												},
+												DNSZoneRecordSchemaMetaFailoverMethod: {
+													Type:        schema.TypeString,
+													Description: "HTTP Method if protocol=HTTP, must be empty for non-HTTP.",
+												},
+												DNSZoneRecordSchemaMetaFailoverPort: {
+													Type:        schema.TypeInt,
+													Description: "Port to check (1-65535).",
+												},
+												DNSZoneRecordSchemaMetaFailoverProtocol: {
+													Type:        schema.TypeString,
+													Description: "Protocol, possible value: HTTP, TCP, UDP, ICMP.",
+													Required:    true,
+													ValidateDiagFunc: func(i interface{}, path cty.Path) diag.Diagnostics {
+														v, dtv := toString(i)
+														if dtv != dtvString {
+															return diag.Errorf("dns record meta failover protocol %v must be string, got: %v", path, i)
+														}
+														if v != "HTTP" && v != "TCP" && v != "ICMP" {
+															return diag.Errorf("dns record meta failover protocol %v must be one of HTTP, TCP, UDP, ICMP, got: %v", path, i)
+														}
+													},
+												},
+												DNSZoneRecordSchemaMetaFailoverRegexp: {
+													Type:        schema.TypeString,
+													Description: "HTTP body to check if protocol=HTTP, must be empty for non-HTTP.",
+												},
+												DNSZoneRecordSchemaMetaFailoverTimeout: {
+													Type:        schema.TypeInt,
+													Description: "Timeout in seconds (1-10).",
+													Required:    true,
+													ValidateDiagFunc: func(i interface{}, path cty.Path) diag.Diagnostics {
+														v, dtv := toInt(i)
+														if dtv != dtvInt {
+															return diag.Errorf("dns record meta failover timeout %v must be an integer, got %v", path, i)
+														}
+														if v < 1 || v > 10 {
+															return diag.Errorf("dns record meta failover timeout %v must be between 1 and 10, got %v", path, i)
+														}
+														return nil
+													},
+												},
+												DNSZoneRecordSchemaMetaFailoverTLS: {
+													Type: schema.TypeBool,
+													Description: "TLS/HTTPS enabled if protocol=HTTP, must be empty for non-HTTP.",
+												},
+												DNSZoneRecordSchemaMetaFailoverURL: {
+													Type: schema.TypeString,
+													Description: "URL path (without leading/trailing slash) to check if protocol=HTTP, must be empty for non-HTTP.",
+												},
+											},
+										},
+										Optional:    true,
+										Description: `Failover meta (eg. {"frequency": 60,"host": "www.gcore.com","http_status_code": null,"method": "GET","port": 80,"protocol": "HTTP","regexp": "","timeout": 10,"tls": false,"url": "/"})`,
+									}
 									DNSZoneRecordSchemaMetaDefault: {
 										Type:        schema.TypeBool,
 										Optional:    true,
